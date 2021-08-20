@@ -28,9 +28,9 @@ function SegmentMesh ({segment, index, orbitRef}) {
       if (!event.value) {
         console.warn(mesh, transform, segment)
         updateSegment(index, {target: {
-          x: segment.target.x + transform.current.offset.x,
-          y: segment.target.y + transform.current.offset.y,
-          z: segment.target.z + transform.current.offset.z
+          x: segment.target.x,
+          y: segment.target.y,
+          z: segment.target.z
         }})
 
         transform.current.update({offset: {x: 0, y: 0, z: 0}})

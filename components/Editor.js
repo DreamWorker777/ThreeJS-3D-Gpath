@@ -1,11 +1,8 @@
 import React, {useEffect, useRef, useState, Suspense} from 'react'
 import {extend, Canvas} from '@react-three/fiber'
-import {OrbitControls, TransformControls, useTexture} from '@react-three/drei'
+import {OrbitControls, TransformControls, useTexture, Line} from '@react-three/drei'
 import * as THREE from 'three'
 import pathStore from "../store/path";
-import { MeshLine, MeshLineMaterial, MeshLineRaycast } from 'threejs-meshline'
- 
-extend({ MeshLine, MeshLineMaterial })
 
 function SegmentMesh ({segment, index, orbitRef}) {
   const mesh = useRef()
@@ -59,7 +56,7 @@ function SegmentMesh ({segment, index, orbitRef}) {
     <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing} space='local'>
       <mesh
         ref={mesh}
-        onClick={(e) => {updateSegment(index, {editing: !segment.editing}); e.stopPropagation()}}
+        onClick={(e) => {updateImageScale(false); updateSegment(index, {editing: !segment.editing}); e.stopPropagation()}}
         onPointerOver={(e) => setHovered(true)}
         onPointerOut={(e) => setHovered(false)}>
         <sphereGeometry args={[1]} />
@@ -89,7 +86,7 @@ function ReferenceImage({ canImgScale, orbitRef }) {
 
   return (
     <TransformControls ref={transform} space='local' mode="scale" showX={canImgScale} showY={canImgScale} showZ={canImgScale}  >
-      <mesh onClick={ (e) => { updateImageScale(!canImgScale); e.stopPropagation(); } }>
+      <mesh onClick={ (e) => { updateImageScale(!canImgScale); e.stopPropagation(); } } position={[0,0, -1]}>
         <planeGeometry attach="geometry" color="white" args={[100, 100]} />
         <meshBasicMaterial {...textureProps} attach="material" transparent={true} side={THREE.DoubleSide} opacity={1} />
       </mesh>
@@ -97,45 +94,22 @@ function ReferenceImage({ canImgScale, orbitRef }) {
   )
 }
 
-function DrawLine({}) {
-  const ref = useRef()
-
+function DrawLine({index}) {
   const segments = pathStore(state => state.segments)
 
-  const points = segments.map((segment) => {
-    return new THREE.Vector3(segment.target.x, segment.target.y, segment.target.z)
-  });
+  let points = [];
 
-  const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+  if( segments.length < 2 || index == 0 ) {
+    points = [[0,0,0], [0,0,0]];
+  } else {
+    points.push([ segments[index-1].target.x, segments[index-1].target.y, segments[index-1].target.z ]);
+    points.push([ segments[index].target.x, segments[index].target.y, segments[index].target.z ]);
+  }
 
   return (
-    <line ref={ref} geometry={lineGeometry}>
-      <lineBasicMaterial attach="material" color={'#ff0000'} lineWidth={5} linecap={'round'} linejoin={'round'} />
-    </line>
+    <Line points={points} color="red" lineWidth={3} dashed={false} onClick={(e) => {alert(123)}} />
   )
 }
-
-// function DrawLine({ vertices, width, color }) {
-//   const points = []
-//   points.push(new THREE.Vector3(-10, 0, 0))
-//   points.push(new THREE.Vector3(0, 10, 0))
-//   points.push(new THREE.Vector3(10, 0, 0))
-
-//   return (
-//       <mesh raycast={MeshLineRaycast}>
-//         <meshLine attach="geometry" vertices={points} />
-//         <meshLineMaterial
-//           attach="material"
-//           transparent
-//           depthTest={false}
-//           lineWidth={width}
-//           color={color}
-//           dashArray={0.05}
-//           dashRatio={0.95}
-//         />
-//       </mesh>
-//   )
-// }
 
 export default function Editor() {
   const orbit = useRef()
@@ -143,21 +117,21 @@ export default function Editor() {
   const canImgScale = pathStore(state => state.imgScale)
 
   return (
-    <Canvas style={{height: 650}} camera={{ position: [0, 0, 100], fov: 50 }}>
+    <Canvas style={{height: 650}} camera={{ position: [50, 10, 100], fov: 50 }}>
       <ambientLight intensity={0.5} />
       <pointLight position={[0, 0, 15]} intensity={1} />
       <gridHelper args={[100, 10]} rotation={[Math.PI / 2, 0, 0]} />
 
       <Suspense fallback={null}>
         <ReferenceImage canImgScale={canImgScale} orbitRef={orbit} />
-        <DrawLine />
+
         {segments.map((segment, i) =>
           <SegmentMesh key={i} segment={segment} index={i} orbitRef={orbit} />
         )}
+        {segments.map((segment, i) =>
+          <DrawLine key={i} index={i} />
+        )}
       </Suspense>
-
-      
-
       <OrbitControls ref={orbit} dampingFactor={0.2} />
     </Canvas>
   )

@@ -4,6 +4,7 @@ import produce from "immer";
 const pathStore = create(set => ({
   segmentStub: {},
   segments: [],
+  imgScale: false, 
   createSegment: (id, delta) => set(produce(state => {
     state.segments.push({
       command: 'G01',
@@ -13,6 +14,9 @@ const pathStore = create(set => ({
   })),
   updateSegment: (id, delta) => set(produce(state => {
     state.segments[id] = {...state.segments[id], ...delta}
+  })),
+  updateImgScale: (value) => set(produce(state => {
+    state.imgScale = value
   })),
 }))
 

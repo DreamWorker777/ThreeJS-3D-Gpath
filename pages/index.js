@@ -3,6 +3,7 @@ import Editor from "../components/Editor";
 
 export default function Home() {
   const segments = pathStore(state => state.segments)
+  const shapes = pathStore(state => state.shapes)
   const createSegment = pathStore(state => state.createSegment)
 
   return (
@@ -32,7 +33,10 @@ export default function Home() {
               )}
               <hr />
               <pre className="mx-1">
-                {JSON.stringify(segments, null, 2)}
+                Segments: {JSON.stringify(segments, null, 2)}
+              </pre>
+              <pre className="mx-1">
+                Shapes: {JSON.stringify(shapes, null, 2)}
               </pre>
             </div>
           </div>

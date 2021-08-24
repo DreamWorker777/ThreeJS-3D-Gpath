@@ -28,6 +28,11 @@ const pathStore = create(set => ({
   })),
   updateShape: (idx, data) => set(produce(state => {
     state.shapes[idx] = { ...state.shapes[idx], ...data }
+
+    if( state.shapes[idx].command == 'Line' )
+      state.segments[ state.shapes[idx].target_index ].command = 'G01';
+    else if( state.shapes[idx].command == 'Arc' )
+      state.segments[ state.shapes[idx].target_index ].command = state.shapes[idx].direction == 'CW' ? 'G02' : 'G03';
   })),
 }))
 

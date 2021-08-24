@@ -244,12 +244,18 @@ function ReferenceImage({ canImgScale, orbitRef }) {
 
   const transform = useRef()
 
+  let prevVal;
   useEffect(() => {
 
     if (transform.current) {
       const { current: controls } = transform
 
       const objectCallback = (event) => {
+        if( prevVal.x == transform.current.object.scale.x )
+          transform.current.object.scale.x = transform.current.object.scale.y;
+        if( prevVal.y == transform.current.object.scale.y )
+          transform.current.object.scale.y = transform.current.object.scale.x;
+
         if( transform.current.object.scale.x > transform.current.object.scale.y)
           transform.current.object.scale.y = transform.current.object.scale.x;
         if( transform.current.object.scale.y > transform.current.object.scale.x)
@@ -258,6 +264,7 @@ function ReferenceImage({ canImgScale, orbitRef }) {
 
       const dragCallback = (event) => {
         orbitRef.current.enabled = !event.value
+        prevVal = {...transform.current.object.scale};
       }
 
       controls.addEventListener('dragging-changed', dragCallback)

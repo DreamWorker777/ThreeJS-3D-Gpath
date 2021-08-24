@@ -292,7 +292,7 @@ function ReferenceImage({ canImgScale, orbitRef }) {
 
   return (
     <TransformControls ref={transform} space='local' mode="scale" showX={canImgScale} showY={canImgScale} showZ={false}  >
-      <mesh onClick={ (e) => { if( !dragging ) { updateImageScale(!canImgScale); } e.stopPropagation(); } } position={[0,0,-1]}>
+      <mesh onClick={ (e) => { if( !dragging ) { updateImageScale(!canImgScale); } e.stopPropagation(); } } position={[0,0,-.05]}>
         <planeGeometry attach="geometry" color="white" args={[100, 100]} />
         <meshBasicMaterial {...textureProps} attach="material" transparent={true} side={THREE.DoubleSide} opacity={1} />
       </mesh>

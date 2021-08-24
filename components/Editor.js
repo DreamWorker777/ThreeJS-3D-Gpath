@@ -83,7 +83,6 @@ function SegmentMesh ({segment, index, orbitRef}) {
   }
 
   const updateSegment = pathStore(state => state.updateSegment)
-  const updateImageScale = pathStore(state => state.updateImgScale)
   const shapes = pathStore(state => state.shapes)
   const segments = pathStore(state => state.segments)
   const updateShape = pathStore(state => state.updateShape);
@@ -101,7 +100,6 @@ function SegmentMesh ({segment, index, orbitRef}) {
 
     const dragCallback = (event) => { // TODO: transform drag action
       orbitRef.current.enabled = !event.value
-      updateImageScale(false)
 
       const current = new Vector3(transform.current.children[1].position.x, transform.current.children[1].position.y, transform.current.children[1].position.z);
       if (!event.value) {
@@ -112,8 +110,6 @@ function SegmentMesh ({segment, index, orbitRef}) {
         }})
 
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
-        
-        updateImageScale(true)
 
         shapes.forEach((shape, idx) => {
           if( (shape.command == 'Arc') && (shape.target_index == index || shape.target_index-1 == index) ) {
@@ -151,7 +147,7 @@ function SegmentMesh ({segment, index, orbitRef}) {
     <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing && canEnableZ(index)} space='local'>
       <mesh
         ref={mesh}
-        onClick={(e) => {updateImageScale(false); updateSegment(index, {editing: !segment.editing}); e.stopPropagation()}}
+        onClick={(e) => {updateSegment(index, {editing: !segment.editing}); e.stopPropagation()}}
         onPointerOver={(e) => setHovered(true)}
         onPointerOut={(e) => setHovered(false)}>
         <sphereGeometry args={[1]} />
@@ -173,12 +169,10 @@ function CenterMesh ({point, orbitRef, index}) {
   const updateShape = pathStore(state => state.updateShape);
   const shapes = pathStore(state => state.shapes);
   const segments = pathStore(state => state.segments);
-  const updateImageScale = pathStore(state => state.updateImgScale)
 
   useEffect(() => {
     const dragCallback = (event) => {
       orbitRef.current.enabled = !event.value
-      updateImageScale(false)
 
       const seg_index = shapes[index].target_index;
       const start = new THREE.Vector3(segments[seg_index].target.x, segments[seg_index].target.y, segments[seg_index].target.z);
@@ -208,8 +202,6 @@ function CenterMesh ({point, orbitRef, index}) {
         } })
 
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
-        
-        updateImageScale(true)
       }
     }
     transform.current.addEventListener('dragging-changed', dragCallback)
@@ -256,14 +248,29 @@ function ReferenceImage({ canImgScale, orbitRef }) {
 
     if (transform.current) {
       const { current: controls } = transform
-      const callback = (event) => (orbitRef.current.enabled = !event.value)
-      controls.addEventListener('dragging-changed', callback)
-      return () => controls.removeEventListener('dragging-changed', callback)
+
+      const objectCallback = (event) => {
+        if( transform.current.object.scale.x > transform.current.object.scale.y)
+          transform.current.object.scale.y = transform.current.object.scale.x;
+        if( transform.current.object.scale.y > transform.current.object.scale.x)
+          transform.current.object.scale.x = transform.current.object.scale.y;
+      }
+
+      const dragCallback = (event) => {
+        orbitRef.current.enabled = !event.value
+      }
+
+      controls.addEventListener('dragging-changed', dragCallback)
+      controls.addEventListener('objectChange', objectCallback)
+      return () => {
+        controls.removeEventListener('dragging-changed', dragCallback)
+        controls.removeEventListener('objectChange', objectCallback)
+      }
     }
   })
 
   return (
-    <TransformControls ref={transform} space='local' mode="scale" showX={canImgScale} showY={canImgScale} showZ={canImgScale}  >
+    <TransformControls ref={transform} space='local' mode="scale" showX={canImgScale} showY={canImgScale} showZ={false}  >
       <mesh onClick={ (e) => { updateImageScale(!canImgScale); e.stopPropagation(); } } position={[0,0, -1]}>
         <planeGeometry attach="geometry" color="white" args={[100, 100]} />
         <meshBasicMaterial {...textureProps} attach="material" transparent={true} side={THREE.DoubleSide} opacity={1} />

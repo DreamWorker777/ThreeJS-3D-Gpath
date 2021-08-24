@@ -86,6 +86,8 @@ function SegmentMesh ({segment, index, orbitRef}) {
   const shapes = pathStore(state => state.shapes)
   const segments = pathStore(state => state.segments)
   const updateShape = pathStore(state => state.updateShape);
+  const updateImageScale = pathStore(state => state.updateImgScale)
+  const canImgScale = pathStore(state => state.imgScale)
 
   const canEnableZ = (index) => { // TODO: can show Z axis
     let res = true;
@@ -97,7 +99,6 @@ function SegmentMesh ({segment, index, orbitRef}) {
   }
 
   useEffect(() => {
-
     const dragCallback = (event) => { // TODO: transform drag action
       orbitRef.current.enabled = !event.value
 
@@ -109,6 +110,8 @@ function SegmentMesh ({segment, index, orbitRef}) {
           z: current.z
         }})
 
+        // TODO: maintain Background Image scale
+        updateImageScale(!canImgScale);
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
 
         shapes.forEach((shape, idx) => {
@@ -169,6 +172,8 @@ function CenterMesh ({point, orbitRef, index}) {
   const updateShape = pathStore(state => state.updateShape);
   const shapes = pathStore(state => state.shapes);
   const segments = pathStore(state => state.segments);
+  const updateImageScale = pathStore(state => state.updateImgScale)
+  const canImgScale = pathStore(state => state.imgScale)
 
   useEffect(() => {
     const dragCallback = (event) => {
@@ -202,6 +207,9 @@ function CenterMesh ({point, orbitRef, index}) {
         } })
 
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
+
+        // TODO: maintain Background Image scale
+        updateImageScale(!canImgScale);
       }
     }
     transform.current.addEventListener('dragging-changed', dragCallback)
@@ -278,7 +286,7 @@ function ReferenceImage({ canImgScale, orbitRef }) {
 
   return (
     <TransformControls ref={transform} space='local' mode="scale" showX={canImgScale} showY={canImgScale} showZ={false}  >
-      <mesh onClick={ (e) => { updateImageScale(!canImgScale); e.stopPropagation(); } } position={[0,0, -1]}>
+      <mesh onClick={ (e) => { updateImageScale(!canImgScale); e.stopPropagation(); } } position={[0,0,-1]}>
         <planeGeometry attach="geometry" color="white" args={[100, 100]} />
         <meshBasicMaterial {...textureProps} attach="material" transparent={true} side={THREE.DoubleSide} opacity={1} />
       </mesh>

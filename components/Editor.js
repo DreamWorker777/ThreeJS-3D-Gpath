@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState, Suspense} from 'react'
 import {extend, Canvas} from '@react-three/fiber'
-import {OrbitControls, TransformControls, useTexture, Line, useAspect} from '@react-three/drei'
+import {OrbitControls, TransformControls, useTexture, Line, useAspect, Environment} from '@react-three/drei'
 import * as THREE from 'three'
 import pathStore from "../store/path";
 import { Vector3 } from 'three';
@@ -72,6 +72,7 @@ function SegmentMesh ({segment, index, orbitRef}) {
   const mesh = useRef()
   const transform = useRef()
   const [hovered, setHovered] = useState(false)
+  const [clicked, setClicked] = useState(false)
   
   const getColor = () => {
     if (segment.editing) {
@@ -103,9 +104,14 @@ function SegmentMesh ({segment, index, orbitRef}) {
         }})
 
         // TODO: maintain Background Image scale
-        console.error(imageData.canScale);
-        updateImgData({ canScale: !imageData.canScale });
-        console.error(imageData.canScale);
+        if( clicked ) {
+          updateSegment(index, {editing: !segment.editing})
+          setClicked(false);
+        }
+        else {
+          updateImgData({ canScale: !imageData.canScale })
+        }
+
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
 
         if( segment.command != 'G01' ) {
@@ -114,8 +120,8 @@ function SegmentMesh ({segment, index, orbitRef}) {
           start = new Vector3(current.x, current.y, current.z);
           end = new Vector3(segments[index-1].target.x, segments[index-1].target.y, segments[index-1].target.z);
 
-          const dis = segment.center.dis;
-          const dir = segment.center.dir;
+          const dis = 0;
+          const dir = 1;
 
           const center = calcCenter(start, end, dis, dir);
           updateSegment(index, { center: {
@@ -130,8 +136,8 @@ function SegmentMesh ({segment, index, orbitRef}) {
           start = new Vector3(segments[index + 1].target.x, segments[index + 1].target.y, segments[index + 1].target.z);
           end = new Vector3(current.x, current.y, current.z);
 
-          const dis = segments[index + 1].center.dis;
-          const dir = segments[index + 1].center.dir;
+          const dis = 0;
+          const dir = 1;
 
           const center = calcCenter(start, end, dis, dir);
           updateSegment(index + 1, { center: {
@@ -154,9 +160,11 @@ function SegmentMesh ({segment, index, orbitRef}) {
     <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing && !canEnableZ} space='local'>
       <mesh
         ref={mesh}
-        onClick={(e) => {updateSegment(index, {editing: !segment.editing}); e.stopPropagation()}}
+        onClick={(e) => {updateSegment(index, {editing: !segment.editing}); updateImgData({ canScale: !imageData.canScale });}}
         onPointerOver={(e) => setHovered(true)}
-        onPointerOut={(e) => setHovered(false)}>
+        onPointerOut={(e) => setHovered(false)}
+        onPointerDown={(e) => setClicked(true)}
+        onPointerUp={(e) => setClicked(false)}>
         <sphereGeometry args={[1]} />
         <meshStandardMaterial color={getColor()} />
       </mesh>
@@ -168,6 +176,7 @@ function SegmentMesh ({segment, index, orbitRef}) {
 function CenterMesh ({point, orbitRef, index}) {
   const mesh = useRef()
   const transform = useRef()
+  const [clicked, setClicked] = useState(false)
 
   const getColor = () => {
     return 0xdd36b9
@@ -205,16 +214,13 @@ function CenterMesh ({point, orbitRef, index}) {
           ...point,
           x: transform.current.children[1].position.x,
           y: transform.current.children[1].position.y,
-          dis: dis,
-          dir: x_f,
         } })
 
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
 
         // TODO: maintain Background Image scale
-        console.error(imageData.canScale);
-        updateImgData({ canScale: !imageData.canScale });
-        console.error(imageData.canScale);
+        if( !clicked )
+          updateImgData({ canScale: !imageData.canScale });
       }
     }
     transform.current.addEventListener('dragging-changed', dragCallback)
@@ -233,11 +239,13 @@ function CenterMesh ({point, orbitRef, index}) {
 
   return (
     <mesh>
-      <TransformControls ref={transform} size={0.5} showX={point.editing} showY={point.editing} showZ={false} position={[point.x, point.y, point.z]}>
+      <TransformControls ref={transform} size={0.5} showX={true} showY={true} showZ={false} position={[point.x, point.y, point.z]}>
         <mesh
           ref={mesh}
-          onClick={(e) => { updateSegment(index, { center: { ...point, editing: !point.editing } }); e.stopPropagation(); }}
-          onDoubleClick={e => { updateSegment(index, { command: segments[index].command == 'G02' ? 'G03' : 'G02' }); e.stopPropagation(); }}>
+          onClick={e => {updateImgData({ canScale: !imageData.canScale });}}
+          onDoubleClick={e => { updateSegment(index, { command: segments[index].command == 'G02' ? 'G03' : 'G02' }); e.stopPropagation(); }}
+          onPointerDown={(e) => setClicked(true)}
+          onPointerUp={(e) => setClicked(false)}>
           <sphereGeometry args={[1]} />
           <meshStandardMaterial color={getColor()} />
         </mesh>
@@ -284,6 +292,9 @@ function ReferenceImage({ orbitRef }) {
         setPrevScale({...transform.current.object.scale})
 
         setDragging(false);
+
+        if( !event.value )
+          updateImgData( { scale: transform.current.object.scale.x, canScale: !imageData.canScale } )
       }
 
       controls.addEventListener('dragging-changed', dragCallback)
@@ -320,8 +331,6 @@ function DrawShape({index, segment, orbitRef}) {
   
         newSegment.command = 'G02'
         newSegment.center = center;
-        newSegment.center.dir = 1;
-        newSegment.center.dis = 0;
       } else if( newSegment.command == 'G02' || newSegment.command == 'G03' ) {
         newSegment.command = 'G01';
         newSegment.center = {};

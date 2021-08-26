@@ -157,7 +157,7 @@ function SegmentMesh ({segment, index, orbitRef}) {
   })
 
   return (
-    <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing && !canEnableZ} space='local'>
+    <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing && !canEnableZ} space='local' position={[segment.target.x, segment.target.y, segment.target.z]}>
       <mesh
         ref={mesh}
         onClick={(e) => {updateSegment(index, {editing: !segment.editing}); updateImgData({ canScale: !imageData.canScale });}}
@@ -307,9 +307,9 @@ function ReferenceImage({ orbitRef }) {
   })
 
   return (
-    <TransformControls ref={transform} space='local' mode="scale" showX={imageData.canScale} showY={imageData.canScale} showZ={false}  >
-      <mesh onClick={ (e) => { if( !dragging ) { updateImgData({ canScale: !imageData.canScale }); } e.stopPropagation(); } } position={[0,0,-.05]}>
-        <planeGeometry attach="geometry" color="white" args={[100, 100]} />
+    <TransformControls ref={transform} space='local' mode="scale" showX={imageData.canScale} showY={imageData.canScale} showZ={false} position={[0,0,-.05]} scale={[imageData.scale, imageData.scale, 1]} >
+      <mesh onClick={ (e) => { if( !dragging ) { updateImgData({ canScale: !imageData.canScale }); } e.stopPropagation(); } } >
+        <planeGeometry attach="geometry" color="white" args={[100, 100]}/>
         <meshBasicMaterial {...textureProps} attach="material" transparent={true} side={THREE.DoubleSide} opacity={1} />
       </mesh>
     </TransformControls>

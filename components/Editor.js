@@ -83,19 +83,13 @@ function SegmentMesh ({segment, index, orbitRef}) {
   }
 
   const updateSegment = pathStore(state => state.updateSegment)
-  const shapes = pathStore(state => state.shapes)
   const segments = pathStore(state => state.segments)
-  const updateShape = pathStore(state => state.updateShape);
   const updateImageScale = pathStore(state => state.updateImgScale)
   const canImgScale = pathStore(state => state.imgScale)
 
-  const canEnableZ = (index) => { // TODO: can show Z axis
-    let res = true;
-    shapes.forEach((shape) => {
-      if(shape.command == 'Arc' && (shape.target_index == index || shape.target_index - 1 == index) )
-        res = false;
-    });
-    return res;
+  const canEnableZ = () => { // TODO: can show Z axis
+    if( segment.command != 'G01' )
+      return false;
   }
 
   useEffect(() => {
@@ -114,29 +108,38 @@ function SegmentMesh ({segment, index, orbitRef}) {
         updateImageScale(!canImgScale);
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
 
-        shapes.forEach((shape, idx) => {
-          if( (shape.command == 'Arc') && (shape.target_index == index || shape.target_index-1 == index) ) {
-            let start, end;
-            if( shape.target_index == index ) {
-              start = new Vector3(current.x, current.y, current.z);
-              end = new Vector3(segments[index-1].target.x, segments[index-1].target.y, segments[index-1].target.z);
-            }
-            if( shape.target_index - 1 == index ) {
-              start = new Vector3(segments[index + 1].target.x, segments[index + 1].target.y, segments[index + 1].target.z);
-              end = new Vector3(current.x, current.y, current.z);
-            }
+        if( segment.command != 'G01' ) {
+          let start, end;
+          
+          start = new Vector3(current.x, current.y, current.z);
+          end = new Vector3(segments[index-1].target.x, segments[index-1].target.y, segments[index-1].target.z);
 
-            const dis = shape.center.dis;
-            const dir = shape.center.dir;
+          const dis = segment.center.dis;
+          const dir = segment.center.dir;
 
-            const center = calcCenter(start, end, dis, dir);
-            updateShape(idx, { center: {
-              ...shape.center,
-              x: center.x,
-              y: center.y,
-            } })
-          }
-        });
+          const center = calcCenter(start, end, dis, dir);
+          updateSegment(index, { center: {
+            ...segment.center,
+            x: center.x,
+            y: center.y,
+          } })
+        }
+        if( segments[index + 1] && segments[index + 1].command != 'G01' ) {
+          let start, end;
+
+          start = new Vector3(segments[index + 1].target.x, segments[index + 1].target.y, segments[index + 1].target.z);
+          end = new Vector3(current.x, current.y, current.z);
+
+          const dis = segments[index + 1].center.dis;
+          const dir = segments[index + 1].center.dir;
+
+          const center = calcCenter(start, end, dis, dir);
+          updateSegment(index + 1, { center: {
+            ...segments[index + 1].center,
+            x: center.x,
+            y: center.y,
+          } })
+        }
       }
     }
     transform.current.addEventListener('dragging-changed', dragCallback)
@@ -147,7 +150,7 @@ function SegmentMesh ({segment, index, orbitRef}) {
   })
 
   return (
-    <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing && canEnableZ(index)} space='local'>
+    <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing && canEnableZ()} space='local'>
       <mesh
         ref={mesh}
         onClick={(e) => {updateSegment(index, {editing: !segment.editing}); e.stopPropagation()}}
@@ -169,8 +172,7 @@ function CenterMesh ({point, orbitRef, index}) {
     return 0xdd36b9
   }
 
-  const updateShape = pathStore(state => state.updateShape);
-  const shapes = pathStore(state => state.shapes);
+  const updateSegment = pathStore(state => state.updateSegment)
   const segments = pathStore(state => state.segments);
   const updateImageScale = pathStore(state => state.updateImgScale)
   const canImgScale = pathStore(state => state.imgScale)
@@ -179,7 +181,7 @@ function CenterMesh ({point, orbitRef, index}) {
     const dragCallback = (event) => {
       orbitRef.current.enabled = !event.value
 
-      const seg_index = shapes[index].target_index;
+      const seg_index = index;
       const start = new THREE.Vector3(segments[seg_index].target.x, segments[seg_index].target.y, segments[seg_index].target.z);
       const end = new THREE.Vector3(segments[seg_index - 1].target.x, segments[seg_index - 1].target.y, segments[seg_index - 1].target.z);
       const center = new THREE.Vector3().lerpVectors(start, end, 0.5);
@@ -198,7 +200,7 @@ function CenterMesh ({point, orbitRef, index}) {
         if( !transform || !transform.current || !transform.current.children )
           return;
 
-        updateShape(index, { center: {
+        updateSegment(index, { center: {
           ...point,
           x: transform.current.children[1].position.x,
           y: transform.current.children[1].position.y,
@@ -221,7 +223,7 @@ function CenterMesh ({point, orbitRef, index}) {
   })
 
   let points = [];
-  let seg_index = shapes[index].target_index;
+  let seg_index = index;
   points.push([ segments[seg_index - 1].target.x, segments[seg_index - 1].target.y, segments[seg_index - 1].target.z ])
   points.push([ point.x, point.y, point.z ])
   points.push([ segments[seg_index].target.x, segments[seg_index].target.y, segments[seg_index].target.z ])
@@ -231,8 +233,8 @@ function CenterMesh ({point, orbitRef, index}) {
       <TransformControls ref={transform} size={0.5} showX={point.editing} showY={point.editing} showZ={false} position={[point.x, point.y, point.z]}>
         <mesh
           ref={mesh}
-          onClick={(e) => { updateShape(index, { center: { ...point, editing: !point.editing } }); e.stopPropagation(); }}
-          onDoubleClick={e => { updateShape(index, { direction: shapes[index].direction == 'CW' ? 'CCW' : 'CW' }); e.stopPropagation(); }}>
+          onClick={(e) => { updateSegment(index, { center: { ...point, editing: !point.editing } }); e.stopPropagation(); }}
+          onDoubleClick={e => { updateSegment(index, { command: segments[index].command == 'G02' ? 'G03' : 'G02' }); e.stopPropagation(); }}>
           <sphereGeometry args={[1]} />
           <meshStandardMaterial color={getColor()} />
         </mesh>
@@ -301,57 +303,56 @@ function ReferenceImage({ canImgScale, orbitRef }) {
 }
 
 // TODO: Shape Component (Line, Arc)
-function DrawShape({index, shape, orbitRef}) {
-  const transformShape = (index, shape) => {
-    let start = segments[shape.target_index];
-    let end = segments[shape.target_index - 1];
+function DrawShape({index, segment, orbitRef}) {
+  const transformShape = (index, segment) => {
+    let start = segments[index];
+    let end = segments[index - 1];
     if( start.editing && start.target.z == end.target.z ) {
-      let newShape = {...shape};
-      if(newShape.command == 'Line' ) {
-        start = new THREE.Vector3( segments[shape.target_index].target.x, segments[shape.target_index].target.y, segments[shape.target_index].target.z );
-        end = new THREE.Vector3( segments[shape.target_index-1].target.x, segments[shape.target_index-1].target.y, segments[shape.target_index-1].target.z );
+      let newSegment = {...segment};
+      if(newSegment.command == 'G01' ) {
+        start = new THREE.Vector3( segments[index].target.x, segments[index].target.y, segments[index].target.z );
+        end = new THREE.Vector3( segments[index-1].target.x, segments[index-1].target.y, segments[index-1].target.z );
   
         const center = calcCenter(start, end, 0, 1, 1);
   
-        newShape.command = 'Arc'
-        newShape.center = center;
-        newShape.center.dir = 1;
-        newShape.center.dis = 0;
-      } else if( newShape.command == 'Arc' ) {
-        newShape.command = 'Line';
-        newShape.direction = 'CW';
-        newShape.center = {};
+        newSegment.command = 'G02'
+        newSegment.center = center;
+        newSegment.center.dir = 1;
+        newSegment.center.dis = 0;
+      } else if( newSegment.command == 'G02' || newSegment.command == 'G03' ) {
+        newSegment.command = 'G01';
+        newSegment.center = {};
       }
-      updateShape(index, newShape);
+      updateSegment(index, newSegment);
     }
   }
 
   const segments = pathStore(state => state.segments)
-  const updateShape = pathStore(state => state.updateShape);
+  const updateSegment = pathStore(state => state.updateSegment);
   
   let points = [];
   let showCenter = false;
 
-  points.push([ segments[shape.target_index].target.x, segments[shape.target_index].target.y, segments[shape.target_index].target.z ]);
-  points.push([ segments[shape.target_index-1].target.x, segments[shape.target_index-1].target.y, segments[shape.target_index-1].target.z ]);
-  if( shape.command == 'Arc' ) {
+  points.push([ segments[index].target.x, segments[index].target.y, segments[index].target.z ]);
+  points.push([ segments[index-1].target.x, segments[index-1].target.y, segments[index-1].target.z ]);
+  if( segment.command == 'G02' || segment.command == 'G03' ) {
     const start = new THREE.Vector3(points[0][0], points[0][1], points[0][2]);
     const end = new THREE.Vector3(points[1][0], points[1][1], points[1][2]);
 
-    const center = new THREE.Vector3(shape.center.x, shape.center.y, shape.center.z);
-    const direction = shape.direction != 'CW';
+    const center = new THREE.Vector3(segment.center.x, segment.center.y, segment.center.z);
+    const direction = segment.command != 'G02';
     points = makeArc(center, start, end, direction);
     points = points.map((point) => {
       return [point.x, point.y, start.z]
     })
 
-    showCenter = segments[shape.target_index].editing;
+    showCenter = segments[index].editing;
   }
 
   return (
     <mesh>
-      <Line points={points} color="red" lineWidth={3} dashed={false} onClick={(e) => { transformShape(index, shape); e.stopPropagation() }} />
-      {showCenter ? <CenterMesh point={shape.center} orbitRef={orbitRef} index={index} /> : null}
+      <Line points={points} color="red" lineWidth={3} dashed={false} onClick={(e) => { transformShape(index, segment); e.stopPropagation() }} />
+      {showCenter ? <CenterMesh point={segment.center} orbitRef={orbitRef} index={index} /> : null}
     </mesh>
   ) 
 }
@@ -359,7 +360,6 @@ function DrawShape({index, shape, orbitRef}) {
 export default function Editor() {
   const orbit = useRef()
   const segments = pathStore(state => state.segments)
-  const shapes = pathStore(state => state.shapes)
   const canImgScale = pathStore(state => state.imgScale)
 
   return (
@@ -374,8 +374,8 @@ export default function Editor() {
         {segments.map((segment, i) =>
           <SegmentMesh key={i} segment={segment} index={i} orbitRef={orbit} />
         )}
-        {shapes.map((shape, i) =>
-          <DrawShape key={i} index={i} shape={shape} orbitRef={orbit} />
+        {segments.map((segment, i) =>
+          i > 0 ? (<DrawShape key={i} index={i} segment={segment} orbitRef={orbit} />) : null
         )}
       </Suspense>
       <OrbitControls ref={orbit} dampingFactor={0.2} />

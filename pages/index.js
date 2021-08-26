@@ -3,7 +3,7 @@ import Editor from "../components/Editor";
 
 export default function Home() {
   const segments = pathStore(state => state.segments)
-  const shapes = pathStore(state => state.shapes)
+  const imageData = pathStore(state => state.imageData)
   const createSegment = pathStore(state => state.createSegment)
 
   return (
@@ -36,7 +36,7 @@ export default function Home() {
                 Segments: {JSON.stringify(segments, null, 2)}
               </pre>
               <pre className="mx-1">
-                Shapes: {JSON.stringify(shapes, null, 2)}
+                ImageData: {JSON.stringify(imageData, null, 2)}
               </pre>
             </div>
           </div>

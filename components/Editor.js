@@ -73,6 +73,7 @@ function SegmentMesh ({segment, index, orbitRef}) {
   const transform = useRef()
   const [hovered, setHovered] = useState(false)
   const [clicked, setClicked] = useState(false)
+  const [dragging, setDragging] = useState(false)
   
   const getColor = () => {
     if (segment.editing) {
@@ -146,13 +147,22 @@ function SegmentMesh ({segment, index, orbitRef}) {
             y: center.y,
           } })
         }
+
+        setDragging(false);
       }
     }
+
+    const objectCallback = (event) => {
+      setDragging(true);
+    }
+
     transform.current.addEventListener('dragging-changed', dragCallback)
+    transform.current.addEventListener('objectChange', objectCallback)
 
     return () => {
       if( !transform || !transform.current ) return;
       transform.current.removeEventListener('dragging-changed', dragCallback)
+      transform.current.removeEventListener('objectChange', objectCallback)
     }
   })
 
@@ -160,11 +170,11 @@ function SegmentMesh ({segment, index, orbitRef}) {
     <TransformControls ref={transform} size={0.5} showX={segment.editing} showY={segment.editing} showZ={segment.editing && !canEnableZ} space='local' position={[segment.target.x, segment.target.y, segment.target.z]}>
       <mesh
         ref={mesh}
-        onClick={(e) => {updateSegment(index, {editing: !segment.editing}); updateImgData({ canScale: !imageData.canScale });}}
+        onClick={(e) => {updateSegment(index, {editing: !segment.editing}); e.stopPropagation();}}
         onPointerOver={(e) => setHovered(true)}
         onPointerOut={(e) => setHovered(false)}
         onPointerDown={(e) => setClicked(true)}
-        onPointerUp={(e) => setClicked(false)}>
+        onPointerUp={(e) => { setClicked(false) }}>
         <sphereGeometry args={[1]} />
         <meshStandardMaterial color={getColor()} />
       </mesh>

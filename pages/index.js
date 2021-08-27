@@ -5,6 +5,7 @@ export default function Home() {
   const segments = pathStore(state => state.segments)
   const imageData = pathStore(state => state.imageData)
   const createSegment = pathStore(state => state.createSegment)
+  const deleteSegment = pathStore(state => state.deleteSegment)
 
   return (
     <div className="container mx-auto">
@@ -26,9 +27,9 @@ export default function Home() {
                     {parseFloat(segment.target.z).toFixed(2)})
                   </strong>
                   {segment.editing &&
-                  <span
-                    className="text-red-600 font-bold">editing</span>
+                  <span className="text-red-600 font-bold">editing</span>
                   }
+                  <span onClick={() => {deleteSegment(i)}} className="ml-2 text-red-600 font-bold cursor-pointer">x</span>
                 </div>
               )}
               <hr />

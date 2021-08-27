@@ -19,6 +19,9 @@ const pathStore = create(set => ({
   updateSegment: (id, delta) => set(produce(state => {
     state.segments[id] = {...state.segments[id], ...delta}
   })),
+  deleteSegment: (id) => set(produce(state => {
+    state.segments.splice(id, 1)
+  })),
   updateImgData: (value) => set(produce(state => {
     state.imageData = { ...state.imageData, ...value }
   })),

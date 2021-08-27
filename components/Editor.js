@@ -171,10 +171,10 @@ function SegmentMesh ({segment, index, orbitRef}) {
       <mesh
         ref={mesh}
         onClick={(e) => {updateSegment(index, {editing: !segment.editing}); e.stopPropagation();}}
-        onPointerOver={(e) => setHovered(true)}
+        onPointerOver={(e) => {setHovered(true);}}
         onPointerOut={(e) => setHovered(false)}
-        onPointerDown={(e) => setClicked(true)}
-        onPointerUp={(e) => { setClicked(false) }}>
+        onPointerDown={(e) => { orbitRef.current.enabled = false; setClicked(true);}}
+        onPointerUp={(e) => { orbitRef.current.enabled = true; setClicked(false) }}>
         <sphereGeometry args={[1]} />
         <meshStandardMaterial color={getColor()} />
       </mesh>
@@ -318,7 +318,10 @@ function ReferenceImage({ orbitRef }) {
 
   return (
     <TransformControls ref={transform} space='local' mode="scale" showX={imageData.canScale} showY={imageData.canScale} showZ={false} position={[0,0,-.05]} scale={[imageData.scale, imageData.scale, 1]} >
-      <mesh onClick={ (e) => { if( !dragging ) { updateImgData({ canScale: !imageData.canScale }); } e.stopPropagation(); } } >
+      <mesh 
+        onClick={ (e) => { if( !dragging ) { updateImgData({ canScale: !imageData.canScale }); } e.stopPropagation(); } } 
+        onPointerUp = {(e) => {orbitRef.current.enabled = true;}}
+        >
         <planeGeometry attach="geometry" color="white" args={[100, 100]}/>
         <meshBasicMaterial {...textureProps} attach="material" transparent={true} side={THREE.DoubleSide} opacity={1} />
       </mesh>
@@ -384,7 +387,10 @@ export default function Editor() {
   const segments = pathStore(state => state.segments)
 
   return (
-    <Canvas style={{height: 650}} camera={{ position: [50, 10, 100], fov: 50 }}>
+    <Canvas 
+      style={{height: 650}}
+      camera={{ position: [50, 10, 100], fov: 50 }}
+      >
       <ambientLight intensity={0.5} />
       <pointLight position={[0, 0, 15]} intensity={1} />
       <gridHelper args={[100, 10]} rotation={[Math.PI / 2, 0, 0]} />
@@ -399,7 +405,11 @@ export default function Editor() {
           i > 0 ? (<DrawShape key={i} index={i} segment={segment} orbitRef={orbit} />) : null
         )}
       </Suspense>
-      <OrbitControls ref={orbit} dampingFactor={0.2} />
+      <OrbitControls 
+        ref={orbit}
+        dampingFactor={0.2}
+        onStart={(e) => {console.log("start")}}
+        onEnd={(e) => { orbit.current.enabled = true; console.log("end"); }} />
     </Canvas>
   )
 }

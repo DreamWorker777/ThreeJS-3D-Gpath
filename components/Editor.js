@@ -45,18 +45,29 @@ function makeArc(center, start, end, isCW) {
 }
 
 // TODO: Get Center Point of Arc
-function calcCenter(start, end, dis, x_f) {
+function calcCenter(start, end, dis, x_f, y_f) {
   const center = new THREE.Vector3().lerpVectors(start, end, 0.5);
 
   const ang2Rad = (ang) => ang * Math.PI / 180;
   const rad2Ang = (rad) => rad * 180 / Math.PI;
   
-  let y_f;
-  if( (start.y > center.y && start.x > center.x) || (start.y < center.y && start.x < center.x) )
-    y_f = -x_f;
-  if( (start.y < center.y && start.x > center.x) || (start.y > center.y && start.x < center.x) )
-    y_f = x_f;
+  let x_flag = x_f;
+  let y_flag = y_f;
 
+  if( (start.y > center.y && start.x > center.x) || (start.y < center.y && start.x < center.x) ) {
+    if( x_f == 1 || x_f == -1 )
+      y_flag = -x_f;
+    else
+      x_flag = -y_f;
+  }
+    
+  if( (start.y < center.y && start.x > center.x) || (start.y > center.y && start.x < center.x) ) {
+    if( x_f == 1 || x_f == -1 )
+      y_flag = x_f;
+    else
+      x_flag = y_f;
+  }
+  
   let lineA = new THREE.Vector3();
   lineA.copy(start).sub(center);
   let lineB = new THREE.Vector3();
@@ -64,7 +75,7 @@ function calcCenter(start, end, dis, x_f) {
   let subAng = 90 - rad2Ang( lineA.angleTo(lineB) );
   let offsetY = dis * Math.cos(ang2Rad(subAng));
   let offsetX = Math.sqrt(dis * dis - offsetY * offsetY);
-  return new THREE.Vector3(center.x + x_f * offsetX, center.y + y_f * offsetY, center.z);
+  return new THREE.Vector3(center.x + x_flag * offsetX, center.y + y_flag * offsetY, center.z);
 }
 
 // TODO: Segment Component
@@ -187,6 +198,7 @@ function CenterMesh ({point, orbitRef, index}) {
   const mesh = useRef()
   const transform = useRef()
   const [clicked, setClicked] = useState(false)
+  const [centerPoints, setCenterPoints] = useState([]);
 
   const getColor = () => {
     return 0xdd36b9
@@ -201,16 +213,35 @@ function CenterMesh ({point, orbitRef, index}) {
     const dragCallback = (event) => {
       orbitRef.current.enabled = !event.value
 
+      setCenterPoints([]);
+
       const seg_index = index;
       const start = new THREE.Vector3(segments[seg_index].target.x, segments[seg_index].target.y, segments[seg_index].target.z);
       const end = new THREE.Vector3(segments[seg_index - 1].target.x, segments[seg_index - 1].target.y, segments[seg_index - 1].target.z);
       const center = new THREE.Vector3().lerpVectors(start, end, 0.5);
       const current = new THREE.Vector3(transform.current.children[1].position.x, transform.current.children[1].position.y, transform.current.children[1].position.z);
 
-      let x_f = current.x > center.x ? 1 : -1;
+      let x_f = 0, y_f = 0;
+      let dis = 0;
+      if( Math.abs(start.x - center.x) > Math.abs(start.y - center.y) ) {
+        y_f = current.y > center.y ? 1 : -1;
+        dis = Math.abs(current.y - center.y);
 
-      const dis = current.distanceTo(center);
-      const arc_center = calcCenter(start, end ,dis, x_f);
+        const temp = dis * Math.abs(start.y - center.y) / Math.abs(start.x - center.x);
+
+        dis = Math.sqrt( dis * dis + temp * temp );
+      }
+      else {
+        x_f = current.x > center.x ? 1 : -1;
+        dis = Math.abs(current.x - center.x);
+
+        const temp = dis * Math.abs(start.x - center.x) / Math.abs(start.y - center.y);
+
+        dis = Math.sqrt( dis * dis + temp * temp );
+      }
+
+      // const dis = current.distanceTo(center);
+      const arc_center = calcCenter(start, end ,dis, x_f, y_f);
 
       transform.current.children[1].position.x = arc_center.x;
       transform.current.children[1].position.y = arc_center.y;
@@ -233,11 +264,29 @@ function CenterMesh ({point, orbitRef, index}) {
           updateImgData({ canScale: !imageData.canScale });
       }
     }
+
+    const objectCallback = (event) => {
+      const seg_index = index;
+      const start = new THREE.Vector3(segments[seg_index].target.x, segments[seg_index].target.y, segments[seg_index].target.z);
+      const end = new THREE.Vector3(segments[seg_index - 1].target.x, segments[seg_index - 1].target.y, segments[seg_index - 1].target.z);
+      const center = new THREE.Vector3().lerpVectors(start, end, 0.5);
+      const current = new THREE.Vector3(transform.current.children[1].position.x, transform.current.children[1].position.y, transform.current.children[1].position.z);
+
+      const arc_center_start = calcCenter(start, end ,1000, 1);
+      const arc_center_end = calcCenter(start, end ,1000, -1);
+
+      let c_points = [];
+      c_points.push([arc_center_start.x, arc_center_start.y, arc_center_start.z]);
+      c_points.push([arc_center_end.x, arc_center_end.y, arc_center_end.z]);
+      setCenterPoints(c_points);
+    }
     transform.current.addEventListener('dragging-changed', dragCallback)
+    transform.current.addEventListener('objectChange', objectCallback)
 
     return () => {
       if( !transform || !transform.current ) return;
       transform.current.removeEventListener('dragging-changed', dragCallback)
+      transform.current.removeEventListener('objectChange', objectCallback)
     }
   })
 
@@ -262,6 +311,8 @@ function CenterMesh ({point, orbitRef, index}) {
       </TransformControls>
       
       <Line points={points} color="red" lineWidth={2} dashed={true} />
+
+      { centerPoints.length > 0 ? <Line points={centerPoints} color="blue" lineWidth={1} dashed={true} /> : null }
     </mesh>
   )
 }
@@ -408,8 +459,8 @@ export default function Editor() {
       <OrbitControls 
         ref={orbit}
         dampingFactor={0.2}
-        onStart={(e) => {console.log("start")}}
-        onEnd={(e) => { orbit.current.enabled = true; console.log("end"); }} />
+        onStart={(e) => {}}
+        onEnd={(e) => { orbit.current.enabled = true; }} />
     </Canvas>
   )
 }

@@ -240,7 +240,6 @@ function CenterMesh ({point, orbitRef, index}) {
         dis = Math.sqrt( dis * dis + temp * temp );
       }
 
-      // const dis = current.distanceTo(center);
       const arc_center = calcCenter(start, end ,dis, x_f, y_f);
 
       transform.current.children[1].position.x = arc_center.x;
@@ -258,6 +257,9 @@ function CenterMesh ({point, orbitRef, index}) {
         } })
 
         transform.current.update({offset: {x: 0, y: 0, z: 0}})
+
+        transform.current.object.position.x = transform.current.children[1].position.x;
+        transform.current.object.position.y = transform.current.children[1].position.y;
 
         // TODO: maintain Background Image scale
         if( !clicked )
